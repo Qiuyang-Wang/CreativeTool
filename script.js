@@ -4,14 +4,14 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// 网格参数
+// Grid parameters
 const spacing = 40;
 let points = [];
 
-// 鼠标位置
+// Mouse position
 let mouse = { x: 0, y: 0 };
 
-// 创建网格点
+// Create grid points
 for (let x = 0; x < canvas.width; x += spacing) {
     for (let y = 0; y < canvas.height; y += spacing) {
         points.push({
@@ -23,13 +23,13 @@ for (let x = 0; x < canvas.width; x += spacing) {
     }
 }
 
-// 鼠标移动
+// Move the mouse
 canvas.addEventListener("mousemove", (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
 });
 
-// 绘制
+// Draw
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -43,17 +43,17 @@ function draw() {
         if (dist < radius) {
             let force = (radius - dist) / radius;
 
-            // 核心变形（往外推）
+            // Core deformation (pushing outwards)
             p.x -= dx * 0.05 * force;
             p.y -= dy * 0.05 * force;
         }
 
-        // 慢慢回到原位（很关键）
+        // Slowly return to the original position
         p.x += (p.originalX - p.x) * 0.05;
         p.y += (p.originalY - p.y) * 0.05;
     });
 
-    // 画线（网格）
+    // Draw lines (grid)
     ctx.beginPath();
     for (let i = 0; i < points.length; i++) {
         let p = points[i];
