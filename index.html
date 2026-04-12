@@ -1,17 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Distortion Playground</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="ui">
-    <button id="resetBtn">Reset</button>
-    <button id="colorBtn">Change Color</button>
-</div>
 
-<canvas id="canvas"></canvas>
+<div class="container">
+
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <label>Intensity</label>
+        <input type="range" id="intensity">
+
+        <button class="modeBtn active" data-mode="liquid">Liquid</button>
+        <button class="modeBtn" data-mode="elastic">Elastic</button>
+        <button class="modeBtn" data-mode="heat">Heat</button>
+        <button id="resetBtn">Reset</button>
+    </div>
+
+</div>
 
 <script src="script.js"></script>
 </body>

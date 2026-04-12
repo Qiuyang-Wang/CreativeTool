@@ -1,92 +1,154 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+
+const intensitySlider = document.getElementById("intensity");
+const intensityValue = document.getElementById("intensityValue");
+const modeButtons = document.querySelectorAll(".modeBtn");
 const resetBtn = document.getElementById("resetBtn");
-const colorBtn = document.getElementById("colorBtn");
 
-let colorMode = 0;
-let isDrawing = false;
-
-canvas.addEventListener("mousedown", () => {
-    isDrawing = true;
-});
-
-canvas.addEventListener("mouseup", () => {
-    isDrawing = false;
-});
-
-canvas.addEventListener("mouseleave", () => {
-    isDrawing = false;
-});
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-// Grid parameters
 const spacing = 40;
+const radius = 120;
+
+let mode = "liquid";
+let intensity = Number(intensitySlider.value) / 100;
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+
 let points = [];
 
-// Mouse position
-let mouse = { x: 0, y: 0 };
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    createGrid();
+}
 
-// Create grid points
-for (let x = 0; x < canvas.width; x += spacing) {
-    for (let y = 0; y < canvas.height; y += spacing) {
-        points.push({
-            x: x,
-            y: y,
-            originalX: x,
-            originalY: y
-        });
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+function createGrid() {
+    points = [];
+    for (let x = 0; x <= canvas.width; x += spacing) {
+        for (let y = 0; y <= canvas.height; y += spacing) {
+            points.push({
+                x,
+                y,
+                ox: x,
+                oy: y,
+                vx: 0,
+                vy: 0
+            });
+        }
     }
 }
 
-// Move the mouse
-canvas.addEventListener("mousemove", (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+function getPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
+
+function applyDistortion(px, py) {
+    points.forEach((p) => {
+        const dx = p.x - px;
+        const dy = p.y - py;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > radius) return;
+
+        const force = Math.pow(1 - dist / radius, 2) * intensity * 0.4;
+        const nx = dx / (dist || 1);
+        const ny = dy / (dist || 1);
+
+        if (mode === "liquid") {
+            p.vx += nx * force * 2.5;
+            p.vy += ny * force * 2.5;
+
+        } else if (mode === "elastic") {
+            p.vx += nx * force * 6.0;
+            p.vy += ny * force * 6.0;
+
+        } else if (mode === "heat") {
+            p.vx += nx * force * 1.5;
+            p.vy += ny * force * 1.5;
+
+            p.x += Math.sin(Date.now() * 0.02 + p.y * 0.1) * 0.5;
+        }
+    });
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+    isDrawing = true;
+    const pos = getPointerPos(e);
+    lastX = pos.x;
+    lastY = pos.y;
+    applyDistortion(pos.x, pos.y);
 });
 
-// Draw
+canvas.addEventListener("pointermove", (e) => {
+    if (!isDrawing) return;
+
+    const pos = getPointerPos(e);
+
+    const dx = pos.x - lastX;
+    const dy = pos.y - lastY;
+    const steps = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy) / 10));
+
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = lastX + dx * t;
+        const y = lastY + dy * t;
+        applyDistortion(x, y);
+    }
+
+    lastX = pos.x;
+    lastY = pos.y;
+});
+
+window.addEventListener("pointerup", () => {
+    isDrawing = false;
+});
+
+intensitySlider.addEventListener("input", () => {
+    intensity = Number(intensitySlider.value) / 100;
+    intensityValue.textContent = intensitySlider.value;
+});
+
+modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+        mode = btn.dataset.mode;
+        modeButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+    });
+});
+
+resetBtn.addEventListener("click", () => {
+    points.forEach(p => {
+        p.x = p.ox;
+        p.y = p.oy;
+        p.vx = 0;
+        p.vy = 0;
+    });
+});
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    points.forEach(p => {
-        let dx = mouse.x - p.x;
-        let dy = mouse.y - p.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
+    points.forEach((p) => {
+        p.vx *= 0.9;
+        p.vy *= 0.9;
 
-        let radius = 120;
+        p.x += p.vx;
+        p.y += p.vy;
 
-        if (isDrawing && dist < radius) {
-            let force = (radius - dist) / radius;
+        if (Math.abs(p.vx) < 0.01) p.vx = 0;
+        if (Math.abs(p.vy) < 0.01) p.vy = 0;
 
-            p.x -= dx * 0.08 * force;
-            p.y -= dy * 0.08 * force;
-        }
-
-        // Slowly return to the original position
-        p.x += (p.originalX - p.x) * 0.02;
-        p.y += (p.originalY - p.y) * 0.02;
-    });
-
-    // Draw lines (grid)
-    ctx.beginPath();
-    for (let i = 0; i < points.length; i++) {
-        let p = points[i];
-        ctx.moveTo(p.x, p.y);
-        ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
-    }
-    points.forEach(p => {
         ctx.beginPath();
-
-        if (colorMode === 0) {
-            ctx.fillStyle = "#333";
-        } else if (colorMode === 1) {
-            ctx.fillStyle = "blue";
-        } else {
-            ctx.fillStyle = "purple";
-        }
-
+        ctx.fillStyle = "#888";
         ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fill();
     });
@@ -95,15 +157,3 @@ function draw() {
 }
 
 draw();
-
-resetBtn.addEventListener("click", () => {
-    points.forEach(p => {
-        p.x = p.originalX;
-        p.y = p.originalY;
-    });
-});
-
-colorBtn.addEventListener("click", () => {
-    colorMode = (colorMode + 1) % 3;
-});
-
