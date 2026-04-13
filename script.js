@@ -6,6 +6,8 @@ const intensityValue = document.getElementById("intensityValue");
 const modeButtons = document.querySelectorAll(".modeBtn");
 const resetBtn = document.getElementById("resetBtn");
 
+const colorBtn = document.getElementById("colorBtn");
+
 const spacing = 40;
 const radius = 120;
 
@@ -14,6 +16,11 @@ let intensity = Number(intensitySlider.value) / 100;
 let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
+
+let colorMode = 0;
+
+intensitySlider.value = 40;
+intensity = 0.4;
 
 let points = [];
 
@@ -75,7 +82,7 @@ function applyDistortion(px, py) {
             p.vx += nx * force * 1.5;
             p.vy += ny * force * 1.5;
 
-            p.x += Math.sin(Date.now() * 0.02 + p.y * 0.1) * 0.5;
+            p.vx += Math.sin(Date.now() * 0.02 + p.y * 0.1) * 0.2;
         }
     });
 }
@@ -114,7 +121,10 @@ window.addEventListener("pointerup", () => {
 
 intensitySlider.addEventListener("input", () => {
     intensity = Number(intensitySlider.value) / 100;
-    intensityValue.textContent = intensitySlider.value;
+
+    if (intensityValue) {
+        intensityValue.textContent = intensitySlider.value;
+    }
 });
 
 modeButtons.forEach((btn) => {
@@ -134,6 +144,10 @@ resetBtn.addEventListener("click", () => {
     });
 });
 
+colorBtn.addEventListener("click", () => {
+    colorMode = (colorMode + 1) % 4;
+});
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -148,7 +162,19 @@ function draw() {
         if (Math.abs(p.vy) < 0.01) p.vy = 0;
 
         ctx.beginPath();
-        ctx.fillStyle = "#888";
+        let color;
+
+        if (colorMode === 0) {
+            color = "#888";
+        } else if (colorMode === 1) {
+            color = "#ec0706";
+        } else if (colorMode === 2) {
+            color = "#fec107";
+        } else {
+            color = "#0403fa";
+        }
+
+        ctx.fillStyle = color;
         ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fill();
     });
