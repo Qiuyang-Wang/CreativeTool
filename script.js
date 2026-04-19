@@ -183,3 +183,13 @@ function draw() {
 }
 
 draw();
+
+const saveBtn = document.getElementById("saveBtn");
+
+saveBtn.addEventListener("click", () => {
+    // 把当前帧画面导出为 PNG
+    const link = document.createElement("a");
+    link.download = "distortion.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+});
