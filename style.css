@@ -1,12 +1,15 @@
+/* The text for the labels should be slightly smaller and in a dark grey colour; it should be clear and legible without drawing attention away from the main focus of the canvas. */
 label {
     font-size: 14px;
     color: #333;
 }
 
+/* Set the slider width so that the control bar does not resize when dragged */
 #intensity {
     width: 160px;
 }
 
+/* Leave a minimum width for the numeric display area to prevent the entire row layout from shifting when the value increases from one digit to two */
 #intensityValue {
     min-width: 28px;
     text-align: right;
@@ -14,6 +17,8 @@ label {
     color: #333;
 }
 
+/* The warm beige background #f4f1e8 has a slightly paper-like texture, which creates a more cohesive look with the tactile feel of the tools;
+   Centring with `flex` ensures the content remains firmly in the centre of the viewport on any screen size. */
 body {
     margin: 0;
     background: #f4f1e8;
@@ -25,12 +30,17 @@ body {
     height: 100vh;
 }
 
+/* Arrange the canvas and control bar vertically, centring them as a single unit so that they do not shift out of place individually */
 .container {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
+/* 70vw allows the canvas to scale with the window, whilst 950px caps the width to prevent it from stretching too wide on large screens; this has been tested as the optimal viewing size;
+   aspect-ratio: 4/3 locks the aspect ratio, ensuring that the dimensions read by `getBoundingClientRect` in JavaScript are the correct 4:3, and that mouse coordinates and point coordinates do not become misaligned;
+   The background colour is slightly whiter than the page, gently lifting the canvas out from the background;
+   Rounded corners and a shadow make it look like a card placed on a table */
 canvas {
     display: block;
 
@@ -43,6 +53,8 @@ canvas {
     box-shadow: 0 8px 30px rgba(0,0,0,0.1);
 }
 
+/* The semi-transparent white background gives the control bar a light, airy feel;
+   The gap ensures consistent spacing, so there’s no need to adjust the margin individually when adding new buttons */
 .controls {
     margin-top: 20px;
     display: flex;
@@ -54,6 +66,7 @@ canvas {
     border-radius: 12px;
 }
 
+/* The sand colour #e8e1d6 is in the same colour scheme as the page background, so the button blends in with the overall design rather than standing out awkwardly. */
 button {
     border: none;
     padding: 8px 14px;
@@ -62,19 +75,23 @@ button {
     cursor: pointer;
 }
 
+/* The darkened area indicates the currently selected mode; the high contrast makes it immediately clear which one is active. */
 button.active {
     background: #222;
     color: white;
 }
 
+/* hover simply darkens the text slightly to provide visual feedback without any jump */
 button:hover {
     background: #d9cfbf;
 }
 
+/* As with #intensity above, this acts as a fallback for type selectors to prevent styles from being overridden */
 input[type="range"] {
     width: 160px;
 }
 
+/* A thin vertical line separates the mode buttons from the function buttons, grouping them visually */
 .divider {
     width: 2px;
     height: 24px;

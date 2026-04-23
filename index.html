@@ -4,29 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Distortion Playground</title>
+    <!-- Import external styles to clearly define the tool’s appearance -->
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
+<!-- A vertically centred outer container that lays out the canvas and control bar as a single unit -->
 <div class="container">
-
+    <!-- The sole creative canvas; all pixel art and distortion animations take place here -->
     <canvas id="canvas"></canvas>
-
+    <!-- The control bar is positioned directly below the canvas, visually separating the 'creation area' from the 'tool area' -->
     <div class="controls">
+        <!-- The 'Intensity' label is linked to the slider, informing the user that this slider controls the intensity of the distortion -->
         <label for="intensity">Intensity</label>
+        <!-- The continuous slider enhances the user experience and is more intuitive than entering numbers -->
         <input type="range" id="intensity">
 
+        <!-- The three mode buttons store their values in the `data-mode` attribute, allowing JavaScript to read them all at once without having to write separate logic for each button -->
+        <!-- Liquid is enabled by default; the page is ready for use as soon as it loads, without the user having to make a selection first. -->
         <button class="modeBtn active" data-mode="liquid">Liquid</button>
         <button class="modeBtn" data-mode="elastic">Elastic</button>
         <button class="modeBtn" data-mode="heat">Heat</button>
+
+        <!-- A divider groups the distortion modes and canvas operations together, reducing visual clutter -->
         <div class="divider"></div>
+
+        <!-- ‘Colour’, ‘Reset’ and ‘Save’ are canvas operations; they are positioned to the right of the divider to distinguish them from the mode buttons -->
         <button id="colorBtn">Color</button>
         <button id="resetBtn">Reset</button>
+        <!-- ‘Save’ is listed last, implying that it is the final step in the creative process -->
         <button id="saveBtn">Save</button>
     </div>
 
 </div>
-
+<!-- Place the script at the end of the body tag to ensure that all DOM elements have finished loading before executing the JavaScript. -->
 <script src="script.js"></script>
 </body>
 </html>
