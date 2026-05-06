@@ -212,21 +212,26 @@ function draw() {
         if (Math.abs(p.vy) < 0.01) p.vy = 0;
 
         // Each point is drawn as a circle with a radius of 2px; this is small enough to reveal changes in density, yet large enough for individual points to be clearly visible.
+        const colors = ["#888", "#ec0706", "#fec107", "#0403fa"];
+        ctx.fillStyle = colors[colorMode];
         ctx.beginPath();
-        let color;
 
-        if (colorMode === 0) {
-            color = "#888";
-        } else if (colorMode === 1) {
-            color = "#ec0706";
-        } else if (colorMode === 2) {
-            color = "#fec107";
-        } else {
-            color = "#0403fa";
+        if (mode === "liquid") {
+            // 圆形
+            ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+
+        } else if (mode === "elastic") {
+            // 方形，以点为中心画 4x4 的正方形
+            ctx.rect(p.x - 2, p.y - 2, 4, 4);
+
+        } else if (mode === "heat") {
+            // 三角形，以点为中心画等边三角形
+            ctx.moveTo(p.x, p.y - 3);
+            ctx.lineTo(p.x + 2.6, p.y + 1.5);
+            ctx.lineTo(p.x - 2.6, p.y + 1.5);
+            ctx.closePath();
         }
 
-        ctx.fillStyle = color;
-        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fill();
     });
 
@@ -242,7 +247,13 @@ draw();
 const saveBtn = document.getElementById("saveBtn");
 
 saveBtn.addEventListener("click", () => {
-    // Export the current frame as a PNG
+    // 导出前先把米色背景填进 canvas，覆盖透明底
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = "#faf7f2";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
     const link = document.createElement("a");
     link.download = "distortion.png";
     link.href = canvas.toDataURL("image/png");
