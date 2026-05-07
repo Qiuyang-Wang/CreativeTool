@@ -102,8 +102,8 @@ function applyDistortion(px, py) {
             p.vy += ny * force * 2.5;
 
         } else if (mode === "elastic") {
-            p.vx += nx * force * 6.0;
-            p.vy += ny * force * 6.0;
+            p.vx += nx * force * 10.0;
+            p.vy += ny * force * 10.0;
 
         } else if (mode === "heat") {
             p.vx += nx * force * 1.5;
@@ -217,15 +217,15 @@ function draw() {
         ctx.beginPath();
 
         if (mode === "liquid") {
-            // 圆形
+            // circle
             ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
 
         } else if (mode === "elastic") {
-            // 方形，以点为中心画 4x4 的正方形
+            // Square: Draw a 4×4 square centred on the point
             ctx.rect(p.x - 2, p.y - 2, 4, 4);
 
         } else if (mode === "heat") {
-            // 三角形，以点为中心画等边三角形
+            // Triangle: Draw an equilateral triangle with a point as its centre
             ctx.moveTo(p.x, p.y - 3);
             ctx.lineTo(p.x + 2.6, p.y + 1.5);
             ctx.lineTo(p.x - 2.6, p.y + 1.5);
@@ -247,7 +247,7 @@ draw();
 const saveBtn = document.getElementById("saveBtn");
 
 saveBtn.addEventListener("click", () => {
-    // 导出前先把米色背景填进 canvas，覆盖透明底
+    // Before exporting, fill the canvas with a beige background to cover the transparent background
     ctx.save();
     ctx.globalCompositeOperation = "destination-over";
     ctx.fillStyle = "#faf7f2";
