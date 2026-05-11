@@ -29,6 +29,7 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 
+let attractMode = false;
 let colorMode = 0;
 
 // The intensity is set to 40 by default, so you’ll see a noticeable effect as soon as you open it; there’s no need to adjust it yourself.
@@ -94,22 +95,21 @@ function applyDistortion(px, py) {
         if (dist > radius) return;
 
         const force = Math.pow(1 - dist / radius, 2) * intensity * 0.4;
-        const nx    = dx / (dist || 1);  // Normalise the direction vector; use 1 when dist=0 to prevent division by zero
-        const ny    = dy / (dist || 1);
+        const nx        = dx / (dist || 1);
+        const ny        = dy / (dist || 1);
+        const direction = attractMode ? -1 : 1;
 
         if (mode === "liquid") {
-            p.vx += nx * force * 2.5;
-            p.vy += ny * force * 2.5;
+            p.vx += nx * force * 2.5 * direction;
+            p.vy += ny * force * 2.5 * direction;
 
         } else if (mode === "elastic") {
-            p.vx += nx * force * 10.0;
-            p.vy += ny * force * 10.0;
+            p.vx += nx * force * 12.0 * direction;
+            p.vy += ny * force * 12.0 * direction;
 
         } else if (mode === "heat") {
-            p.vx += nx * force * 1.5;
-            p.vy += ny * force * 1.5;
-            // The sine values are calculated using both the time and the point’s Y-coordinate, so that points in different rows have different phases,
-            // making it look as though the ripples are spreading horizontally rather than vibrating in unison.
+            p.vx += nx * force * 1.5 * direction;
+            p.vy += ny * force * 1.5 * direction;
             p.vx += Math.sin(Date.now() * 0.02 + p.y * 0.1) * 0.2;
         }
     });
@@ -258,4 +258,11 @@ saveBtn.addEventListener("click", () => {
     link.download = "distortion.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
+});
+
+const attractBtn = document.getElementById("attractBtn");
+
+attractBtn.addEventListener("click", () => {
+    attractMode = !attractMode;
+    attractBtn.classList.toggle("active", attractMode);
 });
