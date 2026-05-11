@@ -54,7 +54,7 @@ canvas {
 }
 
 /* The semi-transparent white background gives the control bar a light, airy feel;
-   The gap ensures consistent spacing, so there’s no need to adjust the margin individually when adding new buttons */
+   The gap ensures consistent spacing, so there's no need to adjust the margin individually when adding new buttons */
 .controls {
     margin-top: 20px;
     display: flex;
@@ -96,4 +96,70 @@ input[type="range"] {
     width: 2px;
     height: 24px;
     background: #ccc;
+}
+
+/* Density slider is narrower than the intensity slider; it only needs a small range of adjustment */
+#density {
+    width: 80px;
+}
+
+/* Both colour pickers share the same compact square style to match the control bar height */
+#bgColor,
+#dotColor {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    padding: 0;
+    cursor: pointer;
+    background: none;
+}
+
+/* Landing overlay covers the full viewport with a semi-transparent backdrop */
+#landing {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+/* Landing card sits in the centre; matches the overall warm, minimal aesthetic */
+#landing-box {
+    background: #faf7f2;
+    border-radius: 20px;
+    padding: 40px 48px;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+#landing-box h1 {
+    font-size: 22px;
+    margin: 0 0 16px;
+    color: #222;
+}
+
+#landing-box p {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.7;
+    margin: 0 0 24px;
+}
+
+/* Start button reuses the active button style to feel consistent with the rest of the UI */
+#landingBtn {
+    background: #222;
+    color: white;
+    padding: 10px 28px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+}
+
+#landingBtn:hover {
+    background: #444;
 }

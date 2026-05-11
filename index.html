@@ -4,10 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Distortion Playground</title>
-    <!-- Import external styles to clearly define the tool’s appearance -->
+    <!-- Import external styles to clearly define the tool's appearance -->
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+<!-- Landing overlay: shown on first load to guide the user -->
+<div id="landing">
+    <div id="landing-box">
+        <h1>Distortion Playground</h1>
+        <p>Click and drag on the canvas to distort the dot grid.<br>
+            Switch between Liquid, Elastic and Heat modes to change how the dots behave.<br>
+            Export your result as a PNG when you're done.</p>
+        <button id="landingBtn">Start</button>
+    </div>
+</div>
+
 <!-- A vertically centred outer container that lays out the canvas and control bar as a single unit -->
 <div class="container">
     <!-- The sole creative canvas; all pixel art and distortion animations take place here -->
@@ -30,10 +42,24 @@
 
         <button id="attractBtn">Attract</button>
 
-        <!-- ‘Colour’, ‘Reset’ and ‘Save’ are canvas operations; they are positioned to the right of the divider to distinguish them from the mode buttons -->
-        <button id="colorBtn">Color</button>
+        <!-- Dot colour picker lets the user freely choose a dot colour -->
+        <label for="dotColor">Color</label>
+        <input type="color" id="dotColor" value="#888888">
+
+        <!-- Shape button cycles through circle, square and triangle; shape is independent of mode -->
+        <button id="shapeBtn">Shape</button>
+
+        <!-- Density slider controls the spacing between dots -->
+        <label for="density">Density</label>
+        <input type="range" id="density" min="20" max="80" value="40">
+
+        <!-- Background colour picker -->
+        <label for="bgColor">BG</label>
+        <input type="color" id="bgColor" value="#faf7f2">
+
+        <button id="undoBtn">Undo</button>
         <button id="resetBtn">Reset</button>
-        <!-- ‘Save’ is listed last, implying that it is the final step in the creative process -->
+        <!-- 'Save' is listed last, implying that it is the final step in the creative process -->
         <button id="saveBtn">Save</button>
     </div>
 

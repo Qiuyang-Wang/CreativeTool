@@ -8,21 +8,26 @@ const intensitySlider = document.getElementById("intensity");
 const intensityValue = document.getElementById("intensityValue");
 const modeButtons = document.querySelectorAll(".modeBtn");
 const resetBtn = document.getElementById("resetBtn");
-
-const colorBtn = document.getElementById("colorBtn");
+const dotColorPicker = document.getElementById("dotColor");
+const densitySlider = document.getElementById("density");
+const bgColorPicker = document.getElementById("bgColor");
+const undoBtn = document.getElementById("undoBtn");
+const shapeBtn = document.getElementById("shapeBtn");
+const landingEl = document.getElementById("landing");
+const landingBtn = document.getElementById("landingBtn");
 
 // Grid constants
 // spacing is the distance between points, set to 40px.
-// After testing, this value feels just right—if it’s too dense, you can’t see the movement of individual points; if it’s too sparse, it doesn’t look like a cohesive field.
-// radius is the radius of the mouse’s influence area, set to 120px.
+// After testing, this value feels just right—if it's too dense, you can't see the movement of individual points; if it's too sparse, it doesn't look like a cohesive field.
+// radius is the radius of the mouse's influence area, set to 120px.
 // A larger radius makes the pushing sensation feel more like a real collision.
-const spacing = 40;
+let spacing = 40;
 const radius = 120;
 
 // State variables\
 // `mode` records the current distortion mode, and `intensity` is a value between 0 and 1 representing the intensity.\
 // `isDrawing` determines whether the user is holding down the mouse button, and `lastX/Y` records the position from the previous frame, which is used for interpolation.\
-// `colorMode` is a colour index, cycling through 0–3.
+// `dotColor` is the current dot colour; `dotShape` is the current shape, cycling through circle, square and triangle.
 let mode = "liquid";
 let intensity = Number(intensitySlider.value) / 100;
 let isDrawing = false;
@@ -30,18 +35,30 @@ let lastX = 0;
 let lastY = 0;
 
 let attractMode = false;
-let colorMode = 0;
+let dotColor = "#888888";
+let dotShape = "circle";
+const shapes = ["circle", "square", "triangle"];
+let bgColor = "#faf7f2";
 
-// The intensity is set to 40 by default, so you’ll see a noticeable effect as soon as you open it; there’s no need to adjust it yourself.
+// The intensity is set to 40 by default, so you'll see a noticeable effect as soon as you open it; there's no need to adjust it yourself.
 intensitySlider.value = 40;
 intensity = 0.4;
 
 // The `points` array stores all the points; each point contains its current position, initial position and velocity.
 let points = [];
 
+// Undo stack stores snapshots of point positions before each stroke
+let undoStack = [];
+
+function saveSnapshot() {
+    undoStack.push(points.map(p => ({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, mode: p.mode })));
+    // Keep the stack at a reasonable size
+    if (undoStack.length > 30) undoStack.shift();
+}
+
 // Canvas dimensions
 // getBoundingClientRect retrieves the actual dimensions rendered by CSS (the 4:3 aspect ratio is controlled by the stylesheet),
-// and writes them to the canvas’s pixel buffer. This ensures that mouse coordinates and point coordinates are in the same coordinate space, preventing misalignment.
+// and writes them to the canvas's pixel buffer. This ensures that mouse coordinates and point coordinates are in the same coordinate space, preventing misalignment.
 // The grid is rebuilt every time the window size changes, ensuring that the points cover the entire canvas.
 function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
@@ -60,7 +77,7 @@ function createGrid() {
     points = [];
     for (let x = 0; x <= canvas.width; x += spacing) {
         for (let y = 0; y <= canvas.height; y += spacing) {
-            points.push({ x, y, ox: x, oy: y, vx: 0, vy: 0 });
+            points.push({ x, y, ox: x, oy: y, vx: 0, vy: 0, mode: "liquid" });
         }
     }
 }
@@ -84,7 +101,7 @@ function getPointerPos(e) {
 //
 // The main difference between the three modes lies in the force multiplier, which produces distinct physical sensations:
 //   Liquid  ×2.5 — Moderate force; points drift slowly, as if gliding across water
-//   Elastic ×6.0 — High force; points bounce away and return, like stretching a rubber band
+//   Elastic ×12.0 — High force; points snap out hard and stay where they land
 //   Heat    ×1.5 + sine noise — Low force, but with lateral jitter, resembling rippling heat waves
 function applyDistortion(px, py) {
     points.forEach((p) => {
@@ -93,6 +110,8 @@ function applyDistortion(px, py) {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > radius) return;
+
+        p.mode = mode;
 
         const force = Math.pow(1 - dist / radius, 2) * intensity * 0.4;
         const nx        = dx / (dist || 1);
@@ -110,6 +129,8 @@ function applyDistortion(px, py) {
         } else if (mode === "heat") {
             p.vx += nx * force * 1.5 * direction;
             p.vy += ny * force * 1.5 * direction;
+            // The sine values are calculated using both the time and the point's Y-coordinate, so that points in different rows have different phases,
+            // making it look as though the ripples are spreading horizontally rather than vibrating in unison.
             p.vx += Math.sin(Date.now() * 0.02 + p.y * 0.1) * 0.2;
         }
     });
@@ -119,6 +140,7 @@ function applyDistortion(px, py) {
 // `pointerdown` supports mice, touch and styluses; pressing triggers a distortion immediately.
 // There is no need to move the pointer first for a response; the effect is visible from the very first touch.
 canvas.addEventListener("pointerdown", (e) => {
+    saveSnapshot();
     isDrawing = true;
     const pos = getPointerPos(e);
     lastX = pos.x;
@@ -184,12 +206,52 @@ resetBtn.addEventListener("click", () => {
         p.vx = 0;
         p.vy = 0;
     });
+    undoStack = [];
 });
 
-// The colours cycle through four values: grey, red, yellow and blue.
-// The limited selection is intentional; too many colours can be distracting, and the focus should remain on the distorted shapes.
-colorBtn.addEventListener("click", () => {
-    colorMode = (colorMode + 1) % 4;
+// Dot colour picker updates the colour used to draw all points.
+dotColorPicker.addEventListener("input", () => {
+    dotColor = dotColorPicker.value;
+});
+
+// Shape button cycles through circle, square and triangle; the label updates to show the current shape.
+shapeBtn.addEventListener("click", () => {
+    const idx = shapes.indexOf(dotShape);
+    dotShape = shapes[(idx + 1) % shapes.length];
+    shapeBtn.textContent = dotShape.charAt(0).toUpperCase() + dotShape.slice(1);
+});
+
+// Density slider rebuilds the grid with a new spacing value; the canvas is cleared and redrawn at the new density.
+densitySlider.addEventListener("input", () => {
+    spacing = Number(densitySlider.value);
+    createGrid();
+    undoStack = [];
+});
+
+// Background colour picker updates the canvas CSS background and the bgColor variable used during export.
+bgColorPicker.addEventListener("input", () => {
+    bgColor = bgColorPicker.value;
+    canvas.style.background = bgColor;
+});
+
+// Undo restores the most recent snapshot from the stack.
+undoBtn.addEventListener("click", () => {
+    if (undoStack.length === 0) return;
+    const snapshot = undoStack.pop();
+    snapshot.forEach((s, i) => {
+        if (points[i]) {
+            points[i].x = s.x;
+            points[i].y = s.y;
+            points[i].vx = s.vx;
+            points[i].vy = s.vy;
+            points[i].mode = s.mode;
+        }
+    });
+});
+
+// Landing overlay is dismissed when the user clicks Start.
+landingBtn.addEventListener("click", () => {
+    landingEl.style.display = "none";
 });
 
 // Rendering loop
@@ -211,20 +273,16 @@ function draw() {
         if (Math.abs(p.vx) < 0.01) p.vx = 0;
         if (Math.abs(p.vy) < 0.01) p.vy = 0;
 
-        // Each point is drawn as a circle with a radius of 2px; this is small enough to reveal changes in density, yet large enough for individual points to be clearly visible.
-        const colors = ["#888", "#ec0706", "#fec107", "#0403fa"];
-        ctx.fillStyle = colors[colorMode];
+        // Each point is drawn using the globally selected colour and shape.
+        ctx.fillStyle = dotColor;
         ctx.beginPath();
 
-        if (mode === "liquid") {
-            // circle
+        if (dotShape === "circle") {
             ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-
-        } else if (mode === "elastic") {
+        } else if (dotShape === "square") {
             // Square: Draw a 4×4 square centred on the point
             ctx.rect(p.x - 2, p.y - 2, 4, 4);
-
-        } else if (mode === "heat") {
+        } else if (dotShape === "triangle") {
             // Triangle: Draw an equilateral triangle with a point as its centre
             ctx.moveTo(p.x, p.y - 3);
             ctx.lineTo(p.x + 2.6, p.y + 1.5);
@@ -247,10 +305,10 @@ draw();
 const saveBtn = document.getElementById("saveBtn");
 
 saveBtn.addEventListener("click", () => {
-    // Before exporting, fill the canvas with a beige background to cover the transparent background
+    // Before exporting, fill the canvas with the current background colour to cover the transparent background
     ctx.save();
     ctx.globalCompositeOperation = "destination-over";
-    ctx.fillStyle = "#faf7f2";
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
 
