@@ -34,12 +34,15 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 
+// attractMode、dotColor、dotShape、bgColor
+// For users with no prior drawing experience, the ability to freely modify colours and shapes offers a low-threshold means of self-expression.
 let attractMode = false;
 let dotColor = "#888888";
 let dotShape = "circle";
 const shapes = ["circle", "square", "triangle"];
 let bgColor = "#faf7f2";
 
+// A reference to the Web Audio API context and the current audio node; this is initialised to null because the AudioContext must be created after the user has swiped, as creating it directly when the page loads will be blocked by the browser.
 let audioCtx = null;
 let currentAudioNodes = null;
 
@@ -53,6 +56,7 @@ let points = [];
 // Undo stack stores snapshots of point positions before each stroke
 let undoStack = [];
 
+// Before each stroke, take a snapshot of the state of all points; this allows the undo function to revert precisely to the previous stroke, rather than returning directly to the initial grid, thereby preserving the creative process in between.
 function saveSnapshot() {
     undoStack.push(points.map(p => ({ x: p.x, y: p.y, vx: p.vx, vy: p.vy, mode: p.mode })));
     // Keep the stack at a reasonable size
@@ -70,6 +74,7 @@ function resizeCanvas() {
     createGrid();
 }
 
+// Initialisation is performed immediately upon page load, and is then resynchronised each time the window is resized, ensuring that click coordinates and mouse coordinates always remain in the same coordinate system, thereby preventing any click offset issues.
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
@@ -139,6 +144,7 @@ function applyDistortion(px, py) {
     });
 }
 
+// Generate a buffer of random white noise that, when looped for two seconds, sounds seamless; this serves as the raw material for the sounds in the ‘liquid’ and ‘heat’ modes, which are then shaped into different timbres using filters.
 function createNoiseBuffer(ctx) {
     const bufferSize = ctx.sampleRate * 2;
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -149,6 +155,8 @@ function createNoiseBuffer(ctx) {
     return buffer;
 }
 
+// When the mouse button is pressed, the corresponding sound effect is triggered based on the current mode, synthesised in real time using the Web Audio API, without the need to load any audio files.
+// The sounds for all three modes are designed to visually evoke a sense of physicality, creating a more cohesive multisensory experience.
 function startAudio() {
     if (!audioCtx) audioCtx = new AudioContext();
     if (audioCtx.state === "suspended") audioCtx.resume();
@@ -164,11 +172,13 @@ function startAudio() {
         source.buffer = createNoiseBuffer(audioCtx);
         source.loop = true;
 
+        // The low-pass filter is set to a cutoff frequency of 200 Hz, allowing only low frequencies to pass through and transforming the white noise into a low, murmuring sound reminiscent of flowing water. A Q-factor of 2.5 introduces a slight resonance in this frequency band, resulting in a sound that is rounder than pure static.
         const filter = audioCtx.createBiquadFilter();
         filter.type = "lowpass";
         filter.frequency.value = 200;
         filter.Q.value = 2.5;
 
+        // A 0.3Hz tremolo gently modulates the volume, simulating the rhythmic ebb and flow of waves, and echoes the visual movement of the ‘Liquid’ mode as it drifts downwards.
         const tremolo = audioCtx.createOscillator();
         tremolo.type = "sine";
         tremolo.frequency.value = 0.3;
@@ -186,10 +196,12 @@ function startAudio() {
         currentAudioNodes = { source, lfo: tremolo, gain };
 
     } else if (mode === "elastic") {
+        // A triangular wave contains more harmonics than a sine wave, giving it a more dynamic sound, and is better suited to the concept of elasticity than a pure tone.
         const osc = audioCtx.createOscillator();
         osc.type = "triangle";
         osc.frequency.value = 200;
 
+        // The LFO modulates the pitch of the main oscillator at 8 Hz, creating a tremolo effect that corresponds to the visual representation of the elastic impact in elastic mode.
         const lfo = audioCtx.createOscillator();
         lfo.type = "sine";
         lfo.frequency.value = 8;
@@ -206,6 +218,7 @@ function startAudio() {
         currentAudioNodes = { source: osc, lfo, gain };
 
     } else if (mode === "heat") {
+        // The bandpass filter concentrates the noise in the high-frequency range around 2200 Hz; once filtered, it produces a hissing static sound that corresponds to the visual sensation of the heatwave distorting the air in ‘heat’ mode—unstable and irregular.
         const source = audioCtx.createBufferSource();
         source.buffer = createNoiseBuffer(audioCtx);
         source.loop = true;
@@ -224,6 +237,7 @@ function startAudio() {
     }
 }
 
+// After releasing the mouse, apply a 0.1-second fade-out rather than stopping immediately, to ensure a more natural auditory conclusion.
 function stopAudio() {
     if (!currentAudioNodes) return;
     const nodes = currentAudioNodes;
@@ -238,6 +252,7 @@ function stopAudio() {
     }, 150);
 }
 
+// As the user makes a stroke, both the distortion calculation and sound effects are triggered simultaneously; this immediate visual and auditory response is the core experience this tool emphasises—the user’s actions are directly mapped to spatial deformation and sound.
 canvas.addEventListener("pointerdown", (e) => {
     saveSnapshot();
     isDrawing = true;
@@ -271,6 +286,7 @@ canvas.addEventListener("pointermove", (e) => {
     lastY = pos.y;
 });
 
+// The sound effect stops when you release your hand; the sound is fully synchronised with the gesture, reinforcing the concept of ‘manipulating space with gestures’.
 window.addEventListener("pointerup", () => {
     isDrawing = false;
     stopAudio();
@@ -361,9 +377,13 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     points.forEach((p) => {
+        // liquid 模式衰减更慢（0.96 vs 0.9），用户测试反馈 liquid 和 elastic 手感太像，调慢衰减让 liquid 的点漂得更远更久，拉开两种模式的区别。
         const damping = p.mode === "liquid" ? 0.96 : 0.9;
         p.vx *= damping;
         p.vy *= damping;
+
+        // Gravity causes the point in the `liquid` element to drift downwards after being pushed away, simulating the physical intuition that water flows downhill, in contrast to the `elastic` element’s rapid rebound.
+        // Once the point moves more than 100px away from the origin, gravity ceases and the point comes to a halt through natural decay, ensuring it does not drift too far and disrupt the overall composition.
 
         if (p.mode === "liquid") {
             const driftDist = Math.sqrt((p.x - p.ox) ** 2 + (p.y - p.oy) ** 2);
@@ -424,6 +444,7 @@ saveBtn.addEventListener("click", () => {
     link.click();
 });
 
+// The ‘attraction mode’ is a suggestion received during user testing; by reversing the direction, the pushing force can be turned into a pulling force, creating a significant difference in the user experience at minimal cost.
 const attractBtn = document.getElementById("attractBtn");
 
 attractBtn.addEventListener("click", () => {
