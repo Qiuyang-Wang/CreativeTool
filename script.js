@@ -40,6 +40,9 @@ let dotShape = "circle";
 const shapes = ["circle", "square", "triangle"];
 let bgColor = "#faf7f2";
 
+let audioCtx = null;
+let currentAudioNodes = null;
+
 // The intensity is set to 40 by default, so you'll see a noticeable effect as soon as you open it; there's no need to adjust it yourself.
 intensitySlider.value = 40;
 intensity = 0.4;
@@ -77,7 +80,7 @@ function createGrid() {
     points = [];
     for (let x = 0; x <= canvas.width; x += spacing) {
         for (let y = 0; y <= canvas.height; y += spacing) {
-            points.push({ x, y, ox: x, oy: y, vx: 0, vy: 0, mode: "liquid" });
+            points.push({ x, y, ox: x, oy: y, vx: 0, vy: 0, mode: "" });
         }
     }
 }
@@ -136,9 +139,105 @@ function applyDistortion(px, py) {
     });
 }
 
-// Pointer events
-// `pointerdown` supports mice, touch and styluses; pressing triggers a distortion immediately.
-// There is no need to move the pointer first for a response; the effect is visible from the very first touch.
+function createNoiseBuffer(ctx) {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+}
+
+function startAudio() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+
+    stopAudio();
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.connect(audioCtx.destination);
+
+    if (mode === "liquid") {
+        const source = audioCtx.createBufferSource();
+        source.buffer = createNoiseBuffer(audioCtx);
+        source.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.value = 200;
+        filter.Q.value = 2.5;
+
+        const tremolo = audioCtx.createOscillator();
+        tremolo.type = "sine";
+        tremolo.frequency.value = 0.3;
+        const tremoloGain = audioCtx.createGain();
+        tremoloGain.gain.value = 0.02;
+        tremolo.connect(tremoloGain);
+        tremoloGain.connect(gain.gain);
+        tremolo.start();
+
+        gain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.08);
+        source.connect(filter);
+        filter.connect(gain);
+        source.start();
+
+        currentAudioNodes = { source, lfo: tremolo, gain };
+
+    } else if (mode === "elastic") {
+        const osc = audioCtx.createOscillator();
+        osc.type = "triangle";
+        osc.frequency.value = 200;
+
+        const lfo = audioCtx.createOscillator();
+        lfo.type = "sine";
+        lfo.frequency.value = 8;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 50;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+
+        gain.gain.linearRampToValueAtTime(0.07, audioCtx.currentTime + 0.08);
+        osc.connect(gain);
+        osc.start();
+        lfo.start();
+
+        currentAudioNodes = { source: osc, lfo, gain };
+
+    } else if (mode === "heat") {
+        const source = audioCtx.createBufferSource();
+        source.buffer = createNoiseBuffer(audioCtx);
+        source.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 2200;
+        filter.Q.value = 0.8;
+
+        gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.08);
+        source.connect(filter);
+        filter.connect(gain);
+        source.start();
+
+        currentAudioNodes = { source, gain };
+    }
+}
+
+function stopAudio() {
+    if (!currentAudioNodes) return;
+    const nodes = currentAudioNodes;
+    currentAudioNodes = null;
+
+    const stopTime = audioCtx.currentTime + 0.1;
+    nodes.gain.gain.linearRampToValueAtTime(0, stopTime);
+
+    setTimeout(() => {
+        try { nodes.source.stop(); } catch (e) {}
+        if (nodes.lfo) try { nodes.lfo.stop(); } catch (e) {}
+    }, 150);
+}
+
 canvas.addEventListener("pointerdown", (e) => {
     saveSnapshot();
     isDrawing = true;
@@ -146,6 +245,7 @@ canvas.addEventListener("pointerdown", (e) => {
     lastX = pos.x;
     lastY = pos.y;
     applyDistortion(pos.x, pos.y);
+    startAudio();
 });
 
 // When moving quickly, the browser does not trigger events for every single pixel, so there is a gap between events.
@@ -171,10 +271,9 @@ canvas.addEventListener("pointermove", (e) => {
     lastY = pos.y;
 });
 
-// I listen to the `window` object rather than the `canvas` because the cursor may have moved outside the canvas area by the time the mouse button is released;
-// if I attached the event handler to the `canvas`, I would not be able to capture this event.
 window.addEventListener("pointerup", () => {
     isDrawing = false;
+    stopAudio();
 });
 
 // Control events
@@ -205,6 +304,7 @@ resetBtn.addEventListener("click", () => {
         p.y = p.oy;
         p.vx = 0;
         p.vy = 0;
+        p.mode = "";
     });
     undoStack = [];
 });
@@ -261,10 +361,16 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     points.forEach((p) => {
-        // Multiply the speed by 0.9 per frame; the energy is gradually depleted, and the dot will naturally slow down and come to a stop.
-        // Without this, the dot would just keep floating indefinitely.
-        p.vx *= 0.9;
-        p.vy *= 0.9;
+        const damping = p.mode === "liquid" ? 0.96 : 0.9;
+        p.vx *= damping;
+        p.vy *= damping;
+
+        if (p.mode === "liquid") {
+            const driftDist = Math.sqrt((p.x - p.ox) ** 2 + (p.y - p.oy) ** 2);
+            if (driftDist < 100) {
+                p.vy += 0.06;
+            }
+        }
 
         p.x += p.vx;
         p.y += p.vy;
